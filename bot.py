@@ -8,8 +8,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 app = FastAPI()
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-user_mode = {}
-
+# =========================
+# COMMANDS
+# =========================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 Welcome to Image Resizer Bot!\n\n"
@@ -43,6 +44,22 @@ telegram_app.add_handler(CommandHandler("pdf_merge", pdf_merge_mode))
 telegram_app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 telegram_app.add_handler(MessageHandler(filters.Document.PDF, handle_pdf))
 
+# =========================
+# START TELEGRAM APP ON STARTUP
+# =========================
+@app.on_event("startup")
+async def startup():
+    await telegram_app.initialize()
+    await telegram_app.start()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await telegram_app.stop()
+    await telegram_app.shutdown()
+
+# =========================
+# WEBHOOK
+# =========================
 @app.post("/webhook")
 async def webhook(req: Request):
     data = await req.json()
