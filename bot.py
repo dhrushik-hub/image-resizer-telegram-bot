@@ -6,6 +6,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 app = FastAPI()
+@app.get("/")
+async def root():
+    return {"status": "server running"}
 
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
