@@ -1,4 +1,4 @@
-print("VERSION 3 - IMAGE COMPRESSOR")
+print("VERSION 4 - TARGET SIZE COMPRESSOR")
 
 import os
 import io
@@ -17,26 +17,14 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 app = FastAPI()
 
-# =========================
-# BASIC ROUTES (FOR TESTING)
-# =========================
-
 @app.get("/")
 async def root():
     return {"status": "server running"}
 
-@app.get("/routes")
-async def show_routes():
-    return [route.path for route in app.routes]
-
-# =========================
-# TELEGRAM APP
-# =========================
-
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# Store user mode
-user_mode = {}
+# Store user state
+user_data = {}
 
 # =========================
 # COMMANDS
@@ -45,16 +33,36 @@ user_mode = {}
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 Bot is working!\n\n"
-        "Use /image_resizer to compress an image."
+        "Use /image_resizer to compress image to specific KB size."
     )
 
-async def image_resizer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def image_resizer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    user_mode[user_id] = "compress"
-    await update.message.reply_text("📸 Send the image you want to compress.")
+    user_data[user_id] = {"step": "ask_size"}
+    await update.message.reply_text("📏 Enter target size in KB (example: 200)")
 
 telegram_app.add_handler(CommandHandler("start", start))
-telegram_app.add_handler(CommandHandler("image_resizer", image_resizer_command))
+telegram_app.add_handler(CommandHandler("image_resizer", image_resizer))
+
+# =========================
+# TEXT HANDLER (FOR SIZE INPUT)
+# =========================
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    text = update.message.text
+
+    if user_id in user_data and user_data[user_id].get("step") == "ask_size":
+        if not text.isdigit():
+            await update.message.reply_text("❌ Please enter a valid number in KB.")
+            return
+
+        user_data[user_id]["target_kb"] = int(text)
+        user_data[user_id]["step"] = "wait_image"
+        await update.message.reply_text("📸 Now send the image.")
+        return
+
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
 # =========================
 # IMAGE HANDLER
@@ -63,35 +71,47 @@ telegram_app.add_handler(CommandHandler("image_resizer", image_resizer_command))
 async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
-    if user_mode.get(user_id) != "compress":
+    if user_id not in user_data:
         return
+
+    if user_data[user_id].get("step") != "wait_image":
+        return
+
+    target_kb = user_data[user_id]["target_kb"]
+    target_bytes = target_kb * 1024
 
     try:
         photo = update.message.photo[-1]
         file = await photo.get_file()
         file_bytes = await file.download_as_bytearray()
 
-        image = Image.open(io.BytesIO(file_bytes))
+        image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
 
         output = io.BytesIO()
-        image = image.convert("RGB")
 
-image.save(
-    output,
-    format="JPEG",
-    quality=75,        # Better quality
-    optimize=True,
-    subsampling=0      # Preserve details
-)
+        quality = 95
+        while quality > 10:
+            output.seek(0)
+            output.truncate()
+
+            image.save(output, format="JPEG", quality=quality, optimize=True)
+            size = output.tell()
+
+            if size <= target_bytes:
+                break
+
+            quality -= 5
 
         output.seek(0)
 
+        final_kb = round(output.tell() / 1024, 2)
+
         await update.message.reply_photo(
             photo=output,
-            caption="✅ Compressed Image"
+            caption=f"✅ Compressed Image\n📦 Final Size: {final_kb} KB\n🎯 Target: {target_kb} KB"
         )
 
-        user_mode[user_id] = None
+        user_data.pop(user_id)
 
     except Exception as e:
         await update.message.reply_text("❌ Error processing image.")
