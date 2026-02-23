@@ -74,7 +74,16 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         image = Image.open(io.BytesIO(file_bytes))
 
         output = io.BytesIO()
-        image.convert("RGB").save(output, format="JPEG", quality=40, optimize=True)
+        image = image.convert("RGB")
+
+image.save(
+    output,
+    format="JPEG",
+    quality=75,        # Better quality
+    optimize=True,
+    subsampling=0      # Preserve details
+)
+
         output.seek(0)
 
         await update.message.reply_photo(
