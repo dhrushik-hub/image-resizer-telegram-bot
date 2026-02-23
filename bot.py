@@ -81,50 +81,49 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_bytes = target_kb * 1024
 
     try:
-        photo = update.message.photo[-1]
-        file = await photo.get_file()
-        file_bytes = await file.download_as_bytearray()
+    photo = update.message.photo[-1]
+    file = await photo.get_file()
+    file_bytes = await file.download_as_bytearray()
 
-        image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+    image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
 
-        output = io.BytesIO()
+    output = io.BytesIO()
 
-        min_q = 10
-        max_q = 95
-        best_output = None
+    min_q = 10
+    max_q = 95
+    best_output = None
 
-while min_q <= max_q:
-    mid_q = (min_q + max_q) // 2
-
-    output.seek(0)
-    output.truncate()
-
-    image.save(output, format="JPEG", quality=mid_q, optimize=True)
-    size = output.tell()
-
-    if size > target_bytes:
-        max_q = mid_q - 1
-    else:
-        best_output = output.getvalue()
-        min_q = mid_q + 1
-
-if best_output:
-    output = io.BytesIO(best_output)
-
+    while min_q <= max_q:
+        mid_q = (min_q + max_q) // 2
 
         output.seek(0)
+        output.truncate()
 
-        final_kb = round(output.tell() / 1024, 2)
+        image.save(output, format="JPEG", quality=mid_q, optimize=True)
+        size = output.tell()
 
-        await update.message.reply_photo(
-            photo=output,
-            caption=f"✅ Compressed Image\n📦 Final Size: {final_kb} KB\n🎯 Target: {target_kb} KB"
-        )
+        if size > target_bytes:
+            max_q = mid_q - 1
+        else:
+            best_output = output.getvalue()
+            min_q = mid_q + 1
 
-        user_data.pop(user_id)
+    if best_output:
+        output = io.BytesIO(best_output)
 
-    except Exception as e:
-        await update.message.reply_text("❌ Error processing image.")
+    output.seek(0)
+
+    final_kb = round(output.tell() / 1024, 2)
+
+    await update.message.reply_photo(
+        photo=output,
+        caption=f"✅ Compressed Image\n📦 Final Size: {final_kb} KB\n🎯 Target: {target_kb} KB"
+    )
+
+    user_data.pop(user_id)
+
+except Exception as e:
+    await update.message.reply_text("❌ Error processing image.")
 
 telegram_app.add_handler(MessageHandler(filters.PHOTO, handle_image))
 
