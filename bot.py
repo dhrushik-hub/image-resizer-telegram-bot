@@ -1,3 +1,5 @@
+print("VERSION 2 DEPLOY TEST")
+
 import os
 from fastapi import FastAPI, Request
 from telegram import Update
