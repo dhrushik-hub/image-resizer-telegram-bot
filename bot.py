@@ -80,7 +80,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_kb = user_data[user_id]["target_kb"]
     target_bytes = target_kb * 1024
 
-    try:
+    try:            
     photo = update.message.photo[-1]
     file = await photo.get_file()
     file_bytes = await file.download_as_bytearray()
