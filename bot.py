@@ -1,13 +1,18 @@
-print("VERSION 4 - TARGET SIZE COMPRESSOR")
+print("VERSION 5 - IMAGE + OJAS PRESET")
 
 import os
 import io
 from fastapi import FastAPI, Request
-from telegram import Update
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
+    CallbackQueryHandler,
     ContextTypes,
     filters,
 )
@@ -23,30 +28,34 @@ async def root():
 
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# Store user state
+# =========================
+# USER STATE STORAGE
+# =========================
 user_data = {}
 
 # =========================
-# COMMANDS
+# START COMMAND
 # =========================
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 Bot is working!\n\n"
-        "Use /image_resizer to compress image to specific KB size."
+        "Commands:\n"
+        "/image_resizer → Compress by custom KB\n"
+        "/ojas → OJAS Photo & Signature preset"
     )
 
+telegram_app.add_handler(CommandHandler("start", start))
+
+# =========================
+# IMAGE RESIZER (CUSTOM KB)
+# =========================
 async def image_resizer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    user_data[user_id] = {"step": "ask_size"}
+    user_data[user_id] = {"mode": "custom", "step": "ask_size"}
     await update.message.reply_text("📏 Enter target size in KB (example: 200)")
 
-telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(CommandHandler("image_resizer", image_resizer))
 
-# =========================
-# TEXT HANDLER (FOR SIZE INPUT)
-# =========================
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -65,20 +74,44 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
 # =========================
-# IMAGE HANDLER
+# OJAS PRESET COMMAND
 # =========================
+async def ojas_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("OJAS PHOTO & Signature", callback_data="ojas")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Select preset:", reply_markup=reply_markup)
 
+telegram_app.add_handler(CommandHandler("ojas", ojas_command))
+
+
+async def preset_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "ojas":
+        user_id = query.from_user.id
+        user_data[user_id] = {
+            "mode": "ojas_photo",
+            "step": "wait_photo"
+        }
+        await query.message.reply_text(
+            "📸 Send PHOTO\n"
+            "Required Size: 5cm x 3.6cm\n"
+            "Max: 15 KB"
+        )
+
+telegram_app.add_handler(CallbackQueryHandler(preset_selected))
+
+# =========================
+# IMAGE HANDLER (BOTH MODES)
+# =========================
 async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
 
     if user_id not in user_data:
         return
-
-    if user_data[user_id].get("step") != "wait_image":
-        return
-
-    target_kb = user_data[user_id]["target_kb"]
-    target_bytes = target_kb * 1024
 
     try:
         photo = update.message.photo[-1]
@@ -86,9 +119,43 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_bytes = await file.download_as_bytearray()
 
         image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+
+        # =========================
+        # CUSTOM KB MODE
+        # =========================
+        if user_data[user_id]["mode"] == "custom":
+            target_kb = user_data[user_id]["target_kb"]
+
+        # =========================
+        # OJAS PHOTO MODE
+        # =========================
+        elif user_data[user_id]["mode"] == "ojas_photo":
+            image = image.resize((189, 136))  # 5cm x 3.6cm
+            target_kb = 15
+            user_data[user_id]["mode"] = "ojas_signature"
+            await update.message.reply_text(
+                "✍ Now send SIGNATURE\n"
+                "Required Size: 2.5cm x 7.5cm\n"
+                "Max: 15 KB"
+            )
+
+        # =========================
+        # OJAS SIGNATURE MODE
+        # =========================
+        elif user_data[user_id]["mode"] == "ojas_signature":
+            image = image.resize((283, 95))  # 7.5cm x 2.5cm
+            target_kb = 15
+            user_data.pop(user_id)
+
+        else:
+            return
+
+        # =========================
+        # SMART COMPRESSION
+        # =========================
+        target_bytes = target_kb * 1024
         output = io.BytesIO()
 
-        # Binary Search Quality Compression
         min_q = 10
         max_q = 95
         best_output = None
@@ -113,25 +180,22 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         final_bytes = len(output.getvalue())
         final_kb = round(final_bytes / 1024, 2)
+
         output.seek(0)
 
         await update.message.reply_photo(
             photo=output,
-            caption=f"✅ Compressed Image\n📦 Final Size: {final_kb} KB\n🎯 Target: {target_kb} KB"
+            caption=f"✅ Done\n📦 Final Size: {final_kb} KB"
         )
 
-        user_data.pop(user_id)
-
-    except Exception as e:
+    except Exception:
         await update.message.reply_text("❌ Error processing image.")
-
 
 telegram_app.add_handler(MessageHandler(filters.PHOTO, handle_image))
 
 # =========================
 # STARTUP & SHUTDOWN
 # =========================
-
 @app.on_event("startup")
 async def on_startup():
     await telegram_app.initialize()
@@ -146,7 +210,6 @@ async def on_shutdown():
 # =========================
 # WEBHOOK
 # =========================
-
 @app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
