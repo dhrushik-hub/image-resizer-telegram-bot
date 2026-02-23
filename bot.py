@@ -121,14 +121,13 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
 
         # =========================
-        # CUSTOM MODE (Exact Target KB)
+        # CUSTOM MODE
         # =========================
         if user_data[user_id]["mode"] == "custom":
             target_kb = user_data[user_id]["target_kb"]
             target_bytes = target_kb * 1024
 
             output = io.BytesIO()
-
             min_q = 10
             max_q = 95
             best_output = None
@@ -154,80 +153,83 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
             final_kb = round(len(output.getvalue()) / 1024, 2)
             output.seek(0)
 
+            await update.message.reply_photo(
+                photo=output,
+                caption=f"✅ Done\n📦 Final Size: {final_kb} KB"
+            )
+            return
+
         # =========================
         # OJAS PHOTO MODE
         # =========================
-   elif user_data[user_id]["mode"] == "ojas_photo":
-        image = image.resize((189, 136))  # 5cm x 3.6cm
+        elif user_data[user_id]["mode"] == "ojas_photo":
 
-    max_bytes = 15 * 1024
-    output = io.BytesIO()
+            image = image.resize((189, 136))  # 5cm x 3.6cm
+            max_bytes = 15 * 1024
 
-    quality = 92
+            output = io.BytesIO()
+            quality = 92
 
-    while quality >= 50:
-        output.seek(0)
-        output.truncate()
+            while quality >= 50:
+                output.seek(0)
+                output.truncate()
 
-        image.save(output, format="JPEG", quality=quality, optimize=True)
-        size = output.tell()
+                image.save(output, format="JPEG", quality=quality, optimize=True)
+                size = output.tell()
 
-        if size <= max_bytes:
-            break
+                if size <= max_bytes:
+                    break
 
-        quality -= 5
+                quality -= 5
 
-    final_kb = round(size / 1024, 2)
-    output.seek(0)
+            final_kb = round(size / 1024, 2)
+            output.seek(0)
 
-    user_data[user_id]["mode"] = "ojas_signature"
+            user_data[user_id]["mode"] = "ojas_signature"
 
-    await update.message.reply_photo(
-        photo=output,
-        caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE"
-    )
-    return
-
+            await update.message.reply_photo(
+                photo=output,
+                caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE"
+            )
+            return
 
         # =========================
         # OJAS SIGNATURE MODE
         # =========================
         elif user_data[user_id]["mode"] == "ojas_signature":
-             image = image.resize((283, 95))  # 7.5cm x 2.5cm
 
-    max_bytes = 15 * 1024
-    output = io.BytesIO()
+            image = image.resize((283, 95))  # 7.5cm x 2.5cm
+            max_bytes = 15 * 1024
 
-    quality = 92
+            output = io.BytesIO()
+            quality = 92
 
-    while quality >= 50:
-        output.seek(0)
-        output.truncate()
+            while quality >= 50:
+                output.seek(0)
+                output.truncate()
 
-        image.save(output, format="JPEG", quality=quality, optimize=True)
-        size = output.tell()
+                image.save(output, format="JPEG", quality=quality, optimize=True)
+                size = output.tell()
 
-        if size <= max_bytes:
-            break
+                if size <= max_bytes:
+                    break
 
-        quality -= 5
+                quality -= 5
 
-    final_kb = round(size / 1024, 2)
-    output.seek(0)
+            final_kb = round(size / 1024, 2)
+            output.seek(0)
 
-    user_data.pop(user_id)
+            user_data.pop(user_id)
 
-
-        else:
+            await update.message.reply_photo(
+                photo=output,
+                caption=f"✅ Signature Done\n📦 Size: {final_kb} KB"
+            )
             return
 
-        await update.message.reply_photo(
-            photo=output,
-            caption=f"✅ Done\n📦 Final Size: {final_kb} KB"
-        )
-
-    except Exception as e:
+    except Exception:
         await update.message.reply_text("❌ Error processing image.")
+
 
 
 
