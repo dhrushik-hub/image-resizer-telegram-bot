@@ -157,8 +157,8 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # =========================
         # OJAS PHOTO MODE
         # =========================
-        elif user_data[user_id]["mode"] == "ojas_photo":
-    image = image.resize((189, 136))  # 5cm x 3.6cm
+   elif user_data[user_id]["mode"] == "ojas_photo":
+        image = image.resize((189, 136))  # 5cm x 3.6cm
 
     max_bytes = 15 * 1024
     output = io.BytesIO()
@@ -193,7 +193,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # OJAS SIGNATURE MODE
         # =========================
         elif user_data[user_id]["mode"] == "ojas_signature":
-    image = image.resize((283, 95))  # 7.5cm x 2.5cm
+             image = image.resize((283, 95))  # 7.5cm x 2.5cm
 
     max_bytes = 15 * 1024
     output = io.BytesIO()
