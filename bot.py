@@ -121,57 +121,87 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
 
         # =========================
-        # CUSTOM MODE
+        # CUSTOM MODE (Exact Target KB)
         # =========================
         if user_data[user_id]["mode"] == "custom":
             target_kb = user_data[user_id]["target_kb"]
-            min_bytes = target_kb * 1024
-            max_bytes = target_kb * 1024
+            target_bytes = target_kb * 1024
+
+            output = io.BytesIO()
+
+            min_q = 10
+            max_q = 95
+            best_output = None
+
+            while min_q <= max_q:
+                mid_q = (min_q + max_q) // 2
+
+                output.seek(0)
+                output.truncate()
+
+                image.save(output, format="JPEG", quality=mid_q, optimize=True)
+                size = output.tell()
+
+                if size > target_bytes:
+                    max_q = mid_q - 1
+                else:
+                    best_output = output.getvalue()
+                    min_q = mid_q + 1
+
+            if best_output:
+                output = io.BytesIO(best_output)
+
+            final_kb = round(len(output.getvalue()) / 1024, 2)
+            output.seek(0)
 
         # =========================
         # OJAS PHOTO MODE
         # =========================
         elif user_data[user_id]["mode"] == "ojas_photo":
             image = image.resize((189, 136))  # 5cm x 3.6cm
-            min_bytes = 11 * 1024
-            max_bytes = 14 * 1024
+
+            output = io.BytesIO()
+            image.save(output, format="JPEG", quality=92, optimize=True)
+
+            size_kb = len(output.getvalue()) / 1024
+
+            if size_kb > 15:
+                output = io.BytesIO()
+                image.save(output, format="JPEG", quality=85, optimize=True)
+
+            final_kb = round(len(output.getvalue()) / 1024, 2)
+            output.seek(0)
+
             user_data[user_id]["mode"] = "ojas_signature"
-            await update.message.reply_text(
-                "✍ Now send SIGNATURE\n"
-                "Required Size: 2.5cm x 7.5cm\n"
-                "Size: 11KB – 14KB"
+
+            await update.message.reply_photo(
+                photo=output,
+                caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE"
             )
+            return
 
         # =========================
         # OJAS SIGNATURE MODE
         # =========================
         elif user_data[user_id]["mode"] == "ojas_signature":
             image = image.resize((283, 95))  # 7.5cm x 2.5cm
-            min_bytes = 11 * 1024
-            max_bytes = 14 * 1024
+
+            output = io.BytesIO()
+            image.save(output, format="JPEG", quality=92, optimize=True)
+
+            size_kb = len(output.getvalue()) / 1024
+
+            if size_kb > 15:
+                output = io.BytesIO()
+                image.save(output, format="JPEG", quality=85, optimize=True)
+
+            final_kb = round(len(output.getvalue()) / 1024, 2)
+            output.seek(0)
+
             user_data.pop(user_id)
 
         else:
             return
-
-        # =========================
-        # RANGE BASED COMPRESSION
-        # =========================
-        output = io.BytesIO()
-
-# Save with high quality first
-image.save(output, format="JPEG", quality=92, optimize=True)
-
-size_kb = len(output.getvalue()) / 1024
-
-# If file is larger than 14KB, compress slightly
-if size_kb > 14:
-    output = io.BytesIO()
-    image.save(output, format="JPEG", quality=85, optimize=True)
-
-final_kb = round(len(output.getvalue()) / 1024, 2)
-
-output.seek(0)
 
         await update.message.reply_photo(
             photo=output,
@@ -180,6 +210,7 @@ output.seek(0)
 
     except Exception as e:
         await update.message.reply_text("❌ Error processing image.")
+
 
 
 telegram_app.add_handler(MessageHandler(filters.PHOTO, handle_image))
