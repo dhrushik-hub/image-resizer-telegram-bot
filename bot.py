@@ -89,18 +89,28 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         output = io.BytesIO()
 
-        quality = 95
-        while quality > 10:
-            output.seek(0)
-            output.truncate()
+        min_q = 10
+        max_q = 95
+        best_output = None
 
-            image.save(output, format="JPEG", quality=quality, optimize=True)
-            size = output.tell()
+while min_q <= max_q:
+    mid_q = (min_q + max_q) // 2
 
-            if size <= target_bytes:
-                break
+    output.seek(0)
+    output.truncate()
 
-            quality -= 5
+    image.save(output, format="JPEG", quality=mid_q, optimize=True)
+    size = output.tell()
+
+    if size > target_bytes:
+        max_q = mid_q - 1
+    else:
+        best_output = output.getvalue()
+        min_q = mid_q + 1
+
+if best_output:
+    output = io.BytesIO(best_output)
+
 
         output.seek(0)
 
