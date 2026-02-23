@@ -158,47 +158,65 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # OJAS PHOTO MODE
         # =========================
         elif user_data[user_id]["mode"] == "ojas_photo":
-            image = image.resize((189, 136))  # 5cm x 3.6cm
+    image = image.resize((189, 136))  # 5cm x 3.6cm
 
-            output = io.BytesIO()
-            image.save(output, format="JPEG", quality=92, optimize=True)
+    max_bytes = 15 * 1024
+    output = io.BytesIO()
 
-            size_kb = len(output.getvalue()) / 1024
+    quality = 92
 
-            if size_kb > 15:
-                output = io.BytesIO()
-                image.save(output, format="JPEG", quality=85, optimize=True)
+    while quality >= 50:
+        output.seek(0)
+        output.truncate()
 
-            final_kb = round(len(output.getvalue()) / 1024, 2)
-            output.seek(0)
+        image.save(output, format="JPEG", quality=quality, optimize=True)
+        size = output.tell()
 
-            user_data[user_id]["mode"] = "ojas_signature"
+        if size <= max_bytes:
+            break
 
-            await update.message.reply_photo(
-                photo=output,
-                caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE"
-            )
-            return
+        quality -= 5
+
+    final_kb = round(size / 1024, 2)
+    output.seek(0)
+
+    user_data[user_id]["mode"] = "ojas_signature"
+
+    await update.message.reply_photo(
+        photo=output,
+        caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE"
+    )
+    return
+
 
         # =========================
         # OJAS SIGNATURE MODE
         # =========================
         elif user_data[user_id]["mode"] == "ojas_signature":
-            image = image.resize((283, 95))  # 7.5cm x 2.5cm
+    image = image.resize((283, 95))  # 7.5cm x 2.5cm
 
-            output = io.BytesIO()
-            image.save(output, format="JPEG", quality=92, optimize=True)
+    max_bytes = 15 * 1024
+    output = io.BytesIO()
 
-            size_kb = len(output.getvalue()) / 1024
+    quality = 92
 
-            if size_kb > 15:
-                output = io.BytesIO()
-                image.save(output, format="JPEG", quality=85, optimize=True)
+    while quality >= 50:
+        output.seek(0)
+        output.truncate()
 
-            final_kb = round(len(output.getvalue()) / 1024, 2)
-            output.seek(0)
+        image.save(output, format="JPEG", quality=quality, optimize=True)
+        size = output.tell()
 
-            user_data.pop(user_id)
+        if size <= max_bytes:
+            break
+
+        quality -= 5
+
+    final_kb = round(size / 1024, 2)
+    output.seek(0)
+
+    user_data.pop(user_id)
+
 
         else:
             return
