@@ -159,37 +159,19 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # =========================
         output = io.BytesIO()
 
-        min_q = 50
-        max_q = 95
-        best_output = None
+# Save with high quality first
+image.save(output, format="JPEG", quality=92, optimize=True)
 
-        while min_q <= max_q:
-            mid_q = (min_q + max_q) // 2
+size_kb = len(output.getvalue()) / 1024
 
-            output.seek(0)
-            output.truncate()
+# If file is larger than 14KB, compress slightly
+if size_kb > 14:
+    output = io.BytesIO()
+    image.save(output, format="JPEG", quality=85, optimize=True)
 
-            image.save(output, format="JPEG", quality=mid_q, optimize=True)
-            size = output.tell()
+final_kb = round(len(output.getvalue()) / 1024, 2)
 
-            if size > max_bytes:
-                max_q = mid_q - 1
-            elif size < min_bytes:
-                min_q = mid_q + 1
-            else:
-                best_output = output.getvalue()
-                min_q = mid_q + 1
-
-        if not best_output:
-            output.seek(0)
-            output.truncate()
-            image.save(output, format="JPEG", quality=85, optimize=True)
-            best_output = output.getvalue()
-
-        final_kb = round(len(best_output) / 1024, 2)
-
-        output = io.BytesIO(best_output)
-        output.seek(0)
+output.seek(0)
 
         await update.message.reply_photo(
             photo=output,
