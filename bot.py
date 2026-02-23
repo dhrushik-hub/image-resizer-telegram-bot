@@ -6,6 +6,10 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 app = FastAPI()
+@app.get("/routes")
+async def show_routes():
+    return [route.path for route in app.routes]
+
 @app.get("/")
 async def root():
     return {"status": "server running"}
