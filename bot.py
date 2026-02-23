@@ -111,8 +111,9 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if best_output:
             output = io.BytesIO(best_output)
 
+        final_bytes = len(output.getvalue())
+        final_kb = round(final_bytes / 1024, 2)
         output.seek(0)
-        final_kb = round(output.tell() / 1024, 2)
 
         await update.message.reply_photo(
             photo=output,
