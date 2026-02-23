@@ -151,37 +151,55 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         # =========================
-        # SMART COMPRESSION
-        # =========================
-        target_bytes = target_kb * 1024
-        output = io.BytesIO()
+# SMART COMPRESSION
+# =========================
+output = io.BytesIO()
 
-        min_q = 10
-        max_q = 95
-        best_output = None
+# For CUSTOM mode
+if user_data[user_id]["mode"] == "custom":
+    min_bytes = target_kb * 1024
+    max_bytes = target_kb * 1024
 
-        while min_q <= max_q:
-            mid_q = (min_q + max_q) // 2
+# For OJAS mode (11KB to 14KB range)
+else:
+    min_bytes = 11 * 1024
+    max_bytes = 14 * 1024
 
-            output.seek(0)
-            output.truncate()
+min_q = 50   # start from better quality
+max_q = 95
+best_output = None
 
-            image.save(output, format="JPEG", quality=mid_q, optimize=True)
-            size = output.tell()
+while min_q <= max_q:
+    mid_q = (min_q + max_q) // 2
 
-            if size > target_bytes:
-                max_q = mid_q - 1
-            else:
-                best_output = output.getvalue()
-                min_q = mid_q + 1
+    output.seek(0)
+    output.truncate()
 
-        if best_output:
-            output = io.BytesIO(best_output)
+    image.save(output, format="JPEG", quality=mid_q, optimize=True)
+    size = output.tell()
 
-        final_bytes = len(output.getvalue())
-        final_kb = round(final_bytes / 1024, 2)
+    if size > max_bytes:
+        max_q = mid_q - 1
+    elif size < min_bytes:
+        min_q = mid_q + 1
+    else:
+        best_output = output.getvalue()
+        min_q = mid_q + 1
 
-        output.seek(0)
+# If perfect range not found, use good quality fallback
+if not best_output:
+    output.seek(0)
+    output.truncate()
+    image.save(output, format="JPEG", quality=85, optimize=True)
+    best_output = output.getvalue()
+
+output = io.BytesIO(best_output)
+
+final_bytes = len(best_output)
+final_kb = round(final_bytes / 1024, 2)
+
+output.seek(0)
+
 
         await update.message.reply_photo(
             photo=output,
