@@ -172,39 +172,39 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # =========================
         # OJAS PHOTO MODE
         # =========================
-elif user_data[user_id]["mode"] == "ojas_photo":
+    elif user_data[user_id]["mode"] == "ojas_photo":
 
-    image = image.resize((189, 136))  # 5cm x 3.6cm
+         image = image.resize((189, 136))  # 5cm x 3.6cm
 
-    # Enhancement
-    enhancer = ImageEnhance.Brightness(image)
-    image = enhancer.enhance(1.05)
+         # Enhancement
+        enhancer = ImageEnhance.Brightness(image)
+        image = enhancer.enhance(1.05)
 
-    enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(1.05)
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(1.05)
 
-    image = image.filter(ImageFilter.SHARPEN)
+        image = image.filter(ImageFilter.SHARPEN)
 
-    max_bytes = 15 * 1024
-    output = io.BytesIO()
-    quality = 92
+        max_bytes = 15 * 1024
+        output = io.BytesIO()
+        quality = 92
 
-    while quality >= 50:
-        output.seek(0)
-        output.truncate()
+        while quality >= 50:
+              output.seek(0)
+              output.truncate()
 
-        image.save(
-            output,
-            format="JPEG",
-            quality=quality,
-            optimize=True,
-            dpi=(300, 300)
-        )
+              image.save(
+                    output,
+                    format="JPEG",
+                    quality=quality,
+                    optimize=True,
+                    dpi=(300, 300)
+                     )
 
-        size = output.tell()
+                size = output.tell()
 
-        if size <= max_bytes:
-            break
+                if size <= max_bytes:
+                    break
 
         quality -= 5
 
@@ -225,16 +225,16 @@ elif user_data[user_id]["mode"] == "ojas_photo":
         elif user_data[user_id]["mode"] == "ojas_signature":
 
             image = image.resize((283, 95))  # 7.5cm x 2.5cm
-# Slight brightness improve
-enhancer = ImageEnhance.Brightness(image)
-image = enhancer.enhance(1.05)
+            # Slight brightness improve
+            enhancer = ImageEnhance.Brightness(image)
+            image = enhancer.enhance(1.05)
 
-# Slight contrast improve
-enhancer = ImageEnhance.Contrast(image)
-image = enhancer.enhance(1.05)
+            # Slight contrast improve
+            enhancer = ImageEnhance.Contrast(image)
+            image = enhancer.enhance(1.05)
 
-# Light sharpening
-image = image.filter(ImageFilter.SHARPEN)
+            # Light sharpening
+            image = image.filter(ImageFilter.SHARPEN)
 
             max_bytes = 15 * 1024
 
