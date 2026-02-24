@@ -1,5 +1,5 @@
 print("VERSION 5 - IMAGE + OJAS PRESET")
-
+from PIL import ImageEnhance, ImageFilter
 import os
 import io
 from fastapi import FastAPI, Request
@@ -46,6 +46,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 telegram_app.add_handler(CommandHandler("start", start))
 
+# =========================
+# CANCLE COMMAND
+# =========================
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if user_id in user_data:
+        user_data.pop(user_id)
+    await update.message.reply_text("❌ Operation cancelled.")
+
+telegram_app.add_handler(CommandHandler("cancel", cancel))
 # =========================
 # IMAGE RESIZER (CUSTOM KB)
 # =========================
@@ -162,36 +172,52 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # =========================
         # OJAS PHOTO MODE
         # =========================
-        elif user_data[user_id]["mode"] == "ojas_photo":
+elif user_data[user_id]["mode"] == "ojas_photo":
 
-            image = image.resize((189, 136))  # 5cm x 3.6cm
-            max_bytes = 15 * 1024
+    image = image.resize((189, 136))  # 5cm x 3.6cm
 
-            output = io.BytesIO()
-            quality = 92
+    # Enhancement
+    enhancer = ImageEnhance.Brightness(image)
+    image = enhancer.enhance(1.05)
 
-            while quality >= 50:
-                output.seek(0)
-                output.truncate()
+    enhancer = ImageEnhance.Contrast(image)
+    image = enhancer.enhance(1.05)
 
-                image.save(output, format="JPEG", quality=quality, optimize=True)
-                size = output.tell()
+    image = image.filter(ImageFilter.SHARPEN)
 
-                if size <= max_bytes:
-                    break
+    max_bytes = 15 * 1024
+    output = io.BytesIO()
+    quality = 92
 
-                quality -= 5
+    while quality >= 50:
+        output.seek(0)
+        output.truncate()
 
-            final_kb = round(size / 1024, 2)
-            output.seek(0)
+        image.save(
+            output,
+            format="JPEG",
+            quality=quality,
+            optimize=True,
+            dpi=(300, 300)
+        )
 
-            user_data[user_id]["mode"] = "ojas_signature"
+        size = output.tell()
 
-            await update.message.reply_photo(
-                photo=output,
-                caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE"
-            )
-            return
+        if size <= max_bytes:
+            break
+
+        quality -= 5
+
+    final_kb = round(size / 1024, 2)
+    output.seek(0)
+
+    user_data[user_id]["mode"] = "ojas_signature"
+
+    await update.message.reply_photo(
+        photo=output,
+        caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE\n(Type /cancel to stop)"
+    )
+    return
 
         # =========================
         # OJAS SIGNATURE MODE
@@ -199,6 +225,17 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif user_data[user_id]["mode"] == "ojas_signature":
 
             image = image.resize((283, 95))  # 7.5cm x 2.5cm
+# Slight brightness improve
+enhancer = ImageEnhance.Brightness(image)
+image = enhancer.enhance(1.05)
+
+# Slight contrast improve
+enhancer = ImageEnhance.Contrast(image)
+image = enhancer.enhance(1.05)
+
+# Light sharpening
+image = image.filter(ImageFilter.SHARPEN)
+
             max_bytes = 15 * 1024
 
             output = io.BytesIO()
