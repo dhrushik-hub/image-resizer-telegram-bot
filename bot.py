@@ -134,6 +134,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # CUSTOM MODE
         # =========================
         if user_data[user_id]["mode"] == "custom":
+
             target_kb = user_data[user_id]["target_kb"]
             target_bytes = target_kb * 1024
 
@@ -144,7 +145,6 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             while min_q <= max_q:
                 mid_q = (min_q + max_q) // 2
-
                 output.seek(0)
                 output.truncate()
 
@@ -172,72 +172,20 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # =========================
         # OJAS PHOTO MODE
         # =========================
-elif user_data[user_id]["mode"] == "ojas_photo":
+        elif user_data[user_id]["mode"] == "ojas_photo":
 
-         image = image.resize((189, 136))  # 5cm x 3.6cm
+            image = image.resize((189, 136))
 
-         # Enhancement
-        enhancer = ImageEnhance.Brightness(image)
-        image = enhancer.enhance(1.05)
-
-        enhancer = ImageEnhance.Contrast(image)
-        image = enhancer.enhance(1.05)
-
-        image = image.filter(ImageFilter.SHARPEN)
-
-        max_bytes = 15 * 1024
-        output = io.BytesIO()
-        quality = 92
-
-        while quality >= 50:
-              output.seek(0)
-              output.truncate()
-
-              image.save(
-                    output,
-                    format="JPEG",
-                    quality=quality,
-                    optimize=True,
-                    dpi=(300, 300)
-                     )
-
-                size = output.tell()
-
-                if size <= max_bytes:
-                    break
-
-        quality -= 5
-
-    final_kb = round(size / 1024, 2)
-    output.seek(0)
-
-    user_data[user_id]["mode"] = "ojas_signature"
-
-    await update.message.reply_photo(
-        photo=output,
-        caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE\n(Type /cancel to stop)"
-    )
-    return
-
-        # =========================
-        # OJAS SIGNATURE MODE
-        # =========================
-        elif user_data[user_id]["mode"] == "ojas_signature":
-
-            image = image.resize((283, 95))  # 7.5cm x 2.5cm
-            # Slight brightness improve
+            # Enhancement
             enhancer = ImageEnhance.Brightness(image)
             image = enhancer.enhance(1.05)
 
-            # Slight contrast improve
             enhancer = ImageEnhance.Contrast(image)
             image = enhancer.enhance(1.05)
 
-            # Light sharpening
             image = image.filter(ImageFilter.SHARPEN)
 
             max_bytes = 15 * 1024
-
             output = io.BytesIO()
             quality = 92
 
@@ -245,7 +193,63 @@ elif user_data[user_id]["mode"] == "ojas_photo":
                 output.seek(0)
                 output.truncate()
 
-                image.save(output, format="JPEG", quality=quality, optimize=True)
+                image.save(
+                    output,
+                    format="JPEG",
+                    quality=quality,
+                    optimize=True,
+                    dpi=(300, 300)
+                )
+
+                size = output.tell()
+
+                if size <= max_bytes:
+                    break
+
+                quality -= 5
+
+            final_kb = round(size / 1024, 2)
+            output.seek(0)
+
+            user_data[user_id]["mode"] = "ojas_signature"
+
+            await update.message.reply_photo(
+                photo=output,
+                caption=f"✅ Photo Done\n📦 Size: {final_kb} KB\n\nNow send SIGNATURE\n(Type /cancel to stop)"
+            )
+            return
+
+        # =========================
+        # OJAS SIGNATURE MODE
+        # =========================
+        elif user_data[user_id]["mode"] == "ojas_signature":
+
+            image = image.resize((283, 95))
+
+            enhancer = ImageEnhance.Brightness(image)
+            image = enhancer.enhance(1.05)
+
+            enhancer = ImageEnhance.Contrast(image)
+            image = enhancer.enhance(1.05)
+
+            image = image.filter(ImageFilter.SHARPEN)
+
+            max_bytes = 15 * 1024
+            output = io.BytesIO()
+            quality = 92
+
+            while quality >= 50:
+                output.seek(0)
+                output.truncate()
+
+                image.save(
+                    output,
+                    format="JPEG",
+                    quality=quality,
+                    optimize=True,
+                    dpi=(300, 300)
+                )
+
                 size = output.tell()
 
                 if size <= max_bytes:
@@ -266,7 +270,6 @@ elif user_data[user_id]["mode"] == "ojas_photo":
 
     except Exception:
         await update.message.reply_text("❌ Error processing image.")
-
 
 
 
