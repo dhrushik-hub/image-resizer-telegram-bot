@@ -172,7 +172,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # =========================
         # OJAS PHOTO MODE
         # =========================
-    elif user_data[user_id]["mode"] == "ojas_photo":
+elif user_data[user_id]["mode"] == "ojas_photo":
 
          image = image.resize((189, 136))  # 5cm x 3.6cm
 
